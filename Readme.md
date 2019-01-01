@@ -1,7 +1,7 @@
 Vault Dash Docs Generator
 =========================
 
-This projects is based on [consul-dash-doc-generator](https://github.com/bartoszj/consul-dash-doc-generator).
+This projects is based on [vault-dash-doc-generator](https://github.com/bartoszj/vault-dash-doc-generator).
 
 ### Installation
 

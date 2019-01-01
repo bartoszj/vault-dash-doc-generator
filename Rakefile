@@ -1,6 +1,7 @@
 require "nokogiri"
 require "erb"
 require "sqlite3"
+require "pathname"
 
 class Index
   attr_accessor :db
@@ -31,7 +32,7 @@ class Index
 
   def insert(type, path)
     doc = Nokogiri::HTML(File.open(path).read)
-    name = doc.title.sub(" - Consul by HashiCorp", "").sub(/.*: (.*)/, "\\1")
+    name = doc.title.sub(" - Vault by HashiCorp", "").sub(/.*: (.*)/, "\\1")
     @db.execute <<-SQL, name: name, type: type, path: path
       INSERT OR IGNORE INTO searchIndex (name, type, path)
       VALUES(:name, :type, :path)
@@ -43,7 +44,7 @@ task default: [:clean, :build, :setup, :copy, :create_index, :package]
 
 task :clean do
   rm_rf "build"
-  rm_rf "Consul.docset"
+  rm_rf "Vault.docset"
 end
 
 task :build do
@@ -56,37 +57,38 @@ task :build do
     end
   end
 
+  sh "sh bootstrap.sh"
   sh "bundle"
   sh "bundle exec middleman build"
 end
 
 task :setup do
-  mkdir_p "Consul.docset/Contents/Resources/Documents"
+  mkdir_p "Vault.docset/Contents/Resources/Documents"
 
   # Icon
   # at older docs there is no retina icon
-  if File::exist? "source/assets/images/favicons/favicon-16x16.png" and File::exist? "source/assets/images/favicons/favicon-32x32.png"
-    cp "source/assets/images/favicons/favicon-16x16.png", "Consul.docset/icon.png"
-    cp "source/assets/images/favicons/favicon-32x32.png", "Consul.docset/icon@2x.png"
-  elsif File::exists? "source/assets/images/favicon.png"
-    cp "source/assets/images/favicon.png", "Consul.docset/icon.png"
+  if File::exist? "assets/img/favicons/favicon-16x16.png" and File::exist? "assets/img/favicons/favicon-32x32.png"
+    cp "assets/img/favicons/favicon-16x16.png", "Vault.docset/icon.png"
+    cp "assets/img/favicons/favicon-32x32.png", "Vault.docset/icon@2x.png"
+  elsif File::exists? "assets/img/favicon.png"
+    cp "assets/img/favicon.png", "Vault.docset/icon.png"
   else
-    cp "source/images/favicon.png", "Consul.docset/icon.png"
+    cp "assets/img/favicon.png", "Vault.docset/icon.png"
   end
 
   # Info.plist
-  File.open("Consul.docset/Contents/Info.plist", "w") do |f|
+  File.open("Vault.docset/Contents/Info.plist", "w") do |f|
     f.write <<-XML
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
     <dict>
     <key>CFBundleIdentifier</key>
-    <string>consul</string>
+    <string>vault</string>
     <key>CFBundleName</key>
-    <string>Consul</string>
+    <string>Vault</string>
     <key>DocSetPlatformFamily</key>
-    <string>consul</string>
+    <string>vault</string>
     <key>isDashDocset</key>
     <true/>
     <key>DashDocSetFamily</key>
@@ -94,7 +96,7 @@ task :setup do
     <key>dashIndexFilePath</key>
     <string>docs/index.html</string>
     <key>DashDocSetFallbackURL</key>
-    <string>https://www.consul.io/</string>
+    <string>https://www.vaultproject.io/</string>
     </dict>
 </plist>
     XML
@@ -107,7 +109,7 @@ task :copy do
 
   file_list.each do |path|
     source = "build/#{path}"
-    target = "Consul.docset/Contents/Resources/Documents/#{path}"
+    target = "Vault.docset/Contents/Resources/Documents/#{path}"
 
     case
     when File.stat(source).directory?
@@ -117,7 +119,7 @@ task :copy do
     when source.match(/\.html$/)
       doc = Nokogiri::HTML(File.open(source).read)
 
-      doc.title = doc.title.sub(" - Consul by HashiCorp", "")
+      doc.title = doc.title.sub(" - Vault by HashiCorp", "")
 
       doc.xpath("//a[contains(@class, 'anchor')]").each do |e|
         a = Nokogiri::XML::Node.new "a", doc
@@ -125,6 +127,10 @@ task :copy do
         a["name"] = "//apple_ref/cpp/%{type}/%{name}" %
           {type: "Section", name: ERB::Util.url_encode(e.parent.children.last.text.strip)}
         e.previous = a
+      end
+
+      doc.xpath("//a[starts-with(@href, '/')]").each do |e|
+        e["href"] = Pathname.new(e["href"]).relative_path_from(Pathname.new("/#{path}").dirname).to_s
       end
 
       doc.xpath('//script').each do |script|
@@ -135,7 +141,13 @@ task :copy do
       doc.xpath("id('header')").each do |e|
         e.remove
       end
+      doc.xpath("//nav[contains(@class, 'g-mega-nav')]").each do |e|
+        e.remove
+      end
       doc.xpath("//div[contains(@class, 'mega-nav-sandbox')]").each do |e|
+        e.remove
+      end
+      doc.xpath("//div[contains(@class, 'g-product-subnav')]").each do |e|
         e.remove
       end
       doc.xpath("//div[contains(@class, 'docs-sidebar')]").each do |e|
@@ -144,12 +156,24 @@ task :copy do
       doc.xpath("id('docs-sidebar')").each do |e|
         e.remove
       end
+      doc.xpath("id('sidebar')").each do |e|
+        e.remove
+      end
+      doc.xpath("id('consent-manager')").each do |e|
+        e.remove
+      end
       doc.xpath("id('footer')").each do |e|
+        e.remove
+      end
+      doc.xpath("//footer").each do |e|
         e.remove
       end
 
       doc.xpath('//div[@id="inner"]/h1').each do |e|
         e["style"] = "margin-top: 0px"
+      end
+      doc.xpath("//div[contains(@class, 'content-wrap')]").each do |e|
+        e["class"] = e["class"].sub("content-wrap", "")
       end
       doc.xpath("//div[contains(@role, 'main')]").each do |e|
         e["style"] = "width: 100%"
@@ -163,11 +187,11 @@ task :copy do
 end
 
 task :create_index do
-  index = Index.new("Consul.docset/Contents/Resources/docSet.dsidx")
+  index = Index.new("Vault.docset/Contents/Resources/docSet.dsidx")
   index.reset
 
-  Dir.chdir("Consul.docset/Contents/Resources/Documents") do
-    # getting-started
+  Dir.chdir("Vault.docset/Contents/Resources/Documents") do
+    # intro/getting-started
     Dir.glob("intro/getting-started/**/*")
       .find_all{ |f| File.stat(f).file? }.each do |path|
 
@@ -175,25 +199,31 @@ task :create_index do
         index.insert "Guide", path
       end
     end
-    # vs
-    Dir.glob("intro/vs/**/*")
+    # guides
+    Dir.glob("guides/**/*")
       .find_all{ |f| File.stat(f).file? }.each do |path|
 
       if path.match(/\.html$/)
         index.insert "Guide", path
       end
     end
-    # docs
-    Dir.glob("docs/*")
-      .find_all{ |f| File.stat(f).file? }.each do |path|
-
-      index.insert "Guide", path
-    end
     # docs/agent
     Dir.glob("docs/agent/**/*")
       .find_all{ |f| File.stat(f).file? }.each do |path|
 
-      index.insert "Attribute", path
+      index.insert "Setting", path
+    end
+    # docs/audit
+    Dir.glob("docs/audit/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Setting", path
+    end
+    # docs/auth
+    Dir.glob("docs/auth/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Setting", path
     end
     # docs/commands
     Dir.glob("docs/commands/**/*")
@@ -205,19 +235,19 @@ task :create_index do
     Dir.glob("docs/connect/**/*")
       .find_all{ |f| File.stat(f).file? }.each do |path|
 
-      index.insert "Callback", path
+      index.insert "Setting", path
+    end
+    # docs/configuration
+    Dir.glob("docs/configuration/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Setting", path
     end
     # docs/enterprise
     Dir.glob("docs/enterprise/**/*")
-      .find_all{ |f| File.stat(f).file? }.each do |path|
+      .find_all{ |f| File.stat(f).file? and File.extname(f) == ".html" }.each do |path|
 
       index.insert "Environment", path
-    end
-    # docs/guides
-    Dir.glob("docs/guides/**/*")
-      .find_all{ |f| File.stat(f).file? }.each do |path|
-
-      index.insert "Guide", path
     end
     # docs/install
     Dir.glob("docs/install/**/*")
@@ -229,13 +259,49 @@ task :create_index do
     Dir.glob("docs/internals/**/*")
       .find_all{ |f| File.stat(f).file? }.each do |path|
 
-      index.insert "Instance", path
+      index.insert "Instruction", path
     end
-    # docs/platform
-    Dir.glob("docs/platform/**/*")
+    # docs/partnerships
+    Dir.glob("docs/partnerships/**/*")
       .find_all{ |f| File.stat(f).file? }.each do |path|
 
-      index.insert "Package", path
+      index.insert "Instruction", path
+    end
+    # docs/plugin
+    Dir.glob("docs/plugin/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Plugin", path
+    end
+    # docs/secrets
+    Dir.glob("docs/secrets/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Setting", path
+    end
+    # docs/upgrading
+    Dir.glob("docs/upgrading/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Instruction", path
+    end
+    # docs/use-cases
+    Dir.glob("docs/use-cases/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Guide", path
+    end
+    # docs/vs
+    Dir.glob("docs/vs/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Guide", path
+    end
+    # docs/what-is-vault
+    Dir.glob("docs/what-is-vault/**/*")
+      .find_all{ |f| File.stat(f).file? }.each do |path|
+
+      index.insert "Guide", path
     end
     # api
     Dir.glob("api/**/*")
@@ -247,9 +313,9 @@ task :create_index do
 end
 
 task :import do
-  sh "open Consul.docset"
+  sh "open Vault.docset"
 end
 
 task :package do
-  sh "tar --exclude='.DS_Store' -cvzf Consul.tgz Consul.docset"
+  sh "tar --exclude='.DS_Store' -cvzf Vault.tgz Vault.docset"
 end

@@ -28,6 +28,8 @@ git checkout "v${TAG}"
 
 # Install gems
 cd "${WEBSITE_PATH}"
+rm Gemfile.lock || true
+rm .ruby-version || true
 bundle install
 
 rm Rakefile || true
