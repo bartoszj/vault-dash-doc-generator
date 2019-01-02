@@ -57,9 +57,10 @@ task :build do
     end
   end
 
-  sh "sh bootstrap.sh"
+  sh "sh bootstrap.sh" if File.exists?("bootstrap.sh")
   sh "bundle"
   sh "bundle exec middleman build"
+  # sh "bundle exec middleman build --no-parallel"
 end
 
 task :setup do
@@ -67,13 +68,17 @@ task :setup do
 
   # Icon
   # at older docs there is no retina icon
-  if File::exist? "assets/img/favicons/favicon-16x16.png" and File::exist? "assets/img/favicons/favicon-32x32.png"
+  if File::exist? "source/assets/images/favicons/favicon-16x16.png" and File::exist? "source/assets/images/favicons/favicon-32x32.png"
+    cp "source/assets/images/favicons/favicon-16x16.png", "Vault.docset/icon.png"
+    cp "source/assets/images/favicons/favicon-32x32.png", "Vault.docset/icon@2x.png"
+  elsif File::exist? "source/assets/images/logo-icon.png" and File::exist? "source/assets/images/logo-icon@2x.png"
+    cp "source/assets/images/logo-icon.png", "Vault.docset/icon.png"
+    cp "source/assets/images/logo-icon@2x.png", "Vault.docset/icon@2x.png"
+  elsif File::exist? "assets/img/favicons/favicon-16x16.png" and File::exist? "assets/img/favicons/favicon-32x32.png"
     cp "assets/img/favicons/favicon-16x16.png", "Vault.docset/icon.png"
     cp "assets/img/favicons/favicon-32x32.png", "Vault.docset/icon@2x.png"
-  elsif File::exists? "assets/img/favicon.png"
-    cp "assets/img/favicon.png", "Vault.docset/icon.png"
   else
-    cp "assets/img/favicon.png", "Vault.docset/icon.png"
+    abort("Icon not found")
   end
 
   # Info.plist
@@ -120,6 +125,7 @@ task :copy do
       doc = Nokogiri::HTML(File.open(source).read)
 
       doc.title = doc.title.sub(" - Vault by HashiCorp", "")
+      doc.title = doc.title.sub(" - HTTP API", "")
 
       doc.xpath("//a[contains(@class, 'anchor')]").each do |e|
         a = Nokogiri::XML::Node.new "a", doc
