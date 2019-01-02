@@ -23,6 +23,7 @@ mkdir -p "${BUILD_PATH}"
 git clone "https://github.com/hashicorp/vault.git" || true
 cd "${VAULT_PATH}"
 git fetch --all --prune
+git clean -fdx
 git checkout -- .
 git checkout "v${TAG}"
 
