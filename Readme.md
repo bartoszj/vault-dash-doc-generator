@@ -6,6 +6,7 @@ This projects is based on [vault-dash-doc-generator](https://github.com/bartoszj
 ### Installation
 
 ```bash
+nodenv install 10.15.3
 rbenv install 2.5.3
 gem install -N bundler
 bundle install

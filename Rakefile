@@ -32,6 +32,9 @@ class Index
 
   def insert(type, path)
     doc = Nokogiri::HTML(File.open(path).read)
+    if doc.title.nil?
+      return
+    end
     name = doc.title.sub(" - Vault by HashiCorp", "").sub(/.*: (.*)/, "\\1")
     @db.execute <<-SQL, name: name, type: type, path: path
       INSERT OR IGNORE INTO searchIndex (name, type, path)
@@ -124,8 +127,10 @@ task :copy do
     when source.match(/\.html$/)
       doc = Nokogiri::HTML(File.open(source).read)
 
-      doc.title = doc.title.sub(" - Vault by HashiCorp", "")
-      doc.title = doc.title.sub(" - HTTP API", "")
+      unless doc.title.nil?
+        doc.title = doc.title.sub(" - Vault by HashiCorp", "")
+        doc.title = doc.title.sub(" - HTTP API", "")
+      end
 
       doc.xpath("//a[contains(@class, 'anchor')]").each do |e|
         a = Nokogiri::XML::Node.new "a", doc

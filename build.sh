@@ -2,6 +2,9 @@
 
 set -ex
 
+# Set NodeEnv
+eval "$(nodenv init -)"
+
 # Read parameters
 TAG=$1
 if [ -z $TAG ]; then
@@ -30,7 +33,6 @@ git checkout "v${TAG}"
 # Install gems
 cd "${WEBSITE_PATH}"
 rm Gemfile.lock || true
-rm .ruby-version || true
 bundle install
 
 rm Rakefile || true
