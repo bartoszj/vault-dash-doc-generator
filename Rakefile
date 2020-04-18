@@ -46,24 +46,12 @@ end
 task default: [:clean, :build, :setup, :copy, :create_index, :package]
 
 task :clean do
-  rm_rf "build"
+  rm_rf "out"
   rm_rf "Vault.docset"
 end
 
 task :build do
-  config_extensions = ["activate :relative_assets", "set :relative_links, true", "set :strip_index_file, false"]
-  File.open("config.rb", "a") do |f|
-    config_extensions.each do |ce|
-      if File.readlines("config.rb").grep(Regexp.new ce).size == 0
-        f.puts ce
-      end
-    end
-  end
-
-  sh "sh bootstrap.sh" if File.exists?("bootstrap.sh")
-  sh "bundle"
-  sh "bundle exec middleman build"
-  # sh "bundle exec middleman build --no-parallel"
+  sh "make build"
 end
 
 task :setup do
@@ -71,15 +59,9 @@ task :setup do
 
   # Icon
   # at older docs there is no retina icon
-  if File::exist? "source/assets/images/favicons/favicon-16x16.png" and File::exist? "source/assets/images/favicons/favicon-32x32.png"
-    cp "source/assets/images/favicons/favicon-16x16.png", "Vault.docset/icon.png"
-    cp "source/assets/images/favicons/favicon-32x32.png", "Vault.docset/icon@2x.png"
-  elsif File::exist? "source/assets/images/logo-icon.png" and File::exist? "source/assets/images/logo-icon@2x.png"
-    cp "source/assets/images/logo-icon.png", "Vault.docset/icon.png"
-    cp "source/assets/images/logo-icon@2x.png", "Vault.docset/icon@2x.png"
-  elsif File::exist? "assets/img/favicons/favicon-16x16.png" and File::exist? "assets/img/favicons/favicon-32x32.png"
-    cp "assets/img/favicons/favicon-16x16.png", "Vault.docset/icon.png"
-    cp "assets/img/favicons/favicon-32x32.png", "Vault.docset/icon@2x.png"
+  if File::exist? "out/img/favicons/favicon-16x16.png" and File::exist? "out/img/favicons/favicon-32x32.png"
+    cp "out/img/favicons/favicon-16x16.png", "Vault.docset/icon.png"
+    cp "out/img/favicons/favicon-32x32.png", "Vault.docset/icon@2x.png"
   else
     abort("Icon not found")
   end
@@ -113,10 +95,10 @@ end
 
 task :copy do
   file_list = []
-  Dir.chdir("build") { file_list = Dir.glob("**/*").sort }
+  Dir.chdir("out") { file_list = Dir.glob("**/*").sort }
 
   file_list.each do |path|
-    source = "build/#{path}"
+    source = "out/#{path}"
     target = "Vault.docset/Contents/Resources/Documents/#{path}"
 
     case
@@ -128,8 +110,10 @@ task :copy do
       doc = Nokogiri::HTML(File.open(source).read)
 
       unless doc.title.nil?
-        doc.title = doc.title.sub(" - Vault by HashiCorp", "")
+        doc.title = doc.title.sub(" | Vault by HashiCorp", "")
         doc.title = doc.title.sub(" - HTTP API", "")
+        doc.title = doc.title.sub(" - Command", "")
+        doc.title = doc.title.sub(" - Guides", "")
       end
 
       doc.xpath("//a[contains(@class, 'anchor')]").each do |e|
@@ -140,8 +124,15 @@ task :copy do
         e.previous = a
       end
 
+      doc.xpath("//link[starts-with(@href, '/')]").each do |e|
+        e["href"] = Pathname.new(e["href"]).relative_path_from(Pathname.new("/#{path}").dirname).to_s
+      end
+
       doc.xpath("//a[starts-with(@href, '/')]").each do |e|
         e["href"] = Pathname.new(e["href"]).relative_path_from(Pathname.new("/#{path}").dirname).to_s
+      end
+      doc.xpath("//a[contains(@href, '/api/')]").each do |e|
+        e["href"] = e["href"].sub("/api/", "/api-docs/")
       end
 
       doc.xpath('//script').each do |script|
@@ -149,45 +140,25 @@ task :copy do
           script.remove
         end
       end
-      doc.xpath("id('header')").each do |e|
-        e.remove
-      end
-      doc.xpath("//nav[contains(@class, 'g-mega-nav')]").each do |e|
-        e.remove
-      end
-      doc.xpath("//div[contains(@class, 'mega-nav-sandbox')]").each do |e|
+      doc.xpath("//div[contains(@class, 'g-mega-nav')]").each do |e|
         e.remove
       end
       doc.xpath("//div[contains(@class, 'g-product-subnav')]").each do |e|
         e.remove
       end
-      doc.xpath("//div[contains(@class, 'docs-sidebar')]").each do |e|
-        e.parent.remove
-      end
-      doc.xpath("id('docs-sidebar')").each do |e|
-        e.remove
-      end
       doc.xpath("id('sidebar')").each do |e|
         e.remove
       end
-      doc.xpath("id('consent-manager')").each do |e|
-        e.remove
-      end
-      doc.xpath("id('footer')").each do |e|
+      doc.xpath("id('edit-this-page')").each do |e|
         e.remove
       end
       doc.xpath("//footer").each do |e|
         e.remove
       end
 
-      doc.xpath('//div[@id="inner"]/h1').each do |e|
-        e["style"] = "margin-top: 0px"
-      end
-      doc.xpath("//div[contains(@class, 'content-wrap')]").each do |e|
-        e["class"] = e["class"].sub("content-wrap", "")
-      end
-      doc.xpath("//div[contains(@role, 'main')]").each do |e|
-        e["style"] = "width: 100%"
+      doc.xpath("//div[contains(@class, 'g-container')]").each do |e|
+        e["class"] = nil
+        e["style"] = "margin-top: 30px; margin-left: 30px; margin-right: 30px;"
       end
 
       File.open(target, "w") { |f| f.write doc }
@@ -315,7 +286,7 @@ task :create_index do
       index.insert "Guide", path
     end
     # api
-    Dir.glob("api/**/*")
+    Dir.glob("api-docs/**/*")
       .find_all{ |f| File.stat(f).file? }.each do |path|
 
       index.insert "Define", path

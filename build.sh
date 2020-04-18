@@ -32,8 +32,6 @@ git checkout "v${TAG}"
 
 # Install gems
 cd "${WEBSITE_PATH}"
-# rm Gemfile.lock || true
-bundle install
 
 rm Rakefile || true
 # cp "${CWD}/Rakefile" .
