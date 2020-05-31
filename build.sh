@@ -2,9 +2,6 @@
 
 set -ex
 
-# Set NodeEnv
-eval "$(nodenv init -)"
-
 # Read parameters
 TAG=$1
 if [ -z $TAG ]; then
