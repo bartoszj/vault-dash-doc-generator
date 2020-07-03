@@ -32,10 +32,11 @@ class Index
 
   def insert(type, path)
     doc = Nokogiri::HTML(File.open(path).read)
-    if doc.title.nil?
-      return
-    end
+    # if doc.title.nil?
+    #   return
+    # end
     name = doc.title.sub(" - Vault by HashiCorp", "").sub(/.*: (.*)/, "\\1")
+    raise "Empty name for #{path}" if name.empty?
     @db.execute <<-SQL, name: name, type: type, path: path
       INSERT OR IGNORE INTO searchIndex (name, type, path)
       VALUES(:name, :type, :path)
@@ -51,6 +52,8 @@ task :clean do
 end
 
 task :build do
+  sh "sed -i '' 's|npm run static\$|bash -c \"npm install; npm run static\"|g' Makefile"
+  sh "sed -i '' 's|unstable_getStaticProps|getStaticProps|g' pages/downloads/index.jsx"
   sh "make build"
 end
 

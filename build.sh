@@ -35,6 +35,7 @@ rm Rakefile || true
 ln -s "${CWD}/Rakefile" || true
 
 # Build
+ulimit -n 16000
 rake
 
 mv Vault.tgz "${BUILD_PATH}"
