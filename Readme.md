@@ -29,7 +29,13 @@ Then move the docset into a proper directory.
     bash -c "npm install; npm run static"
     ```
 
-- `vault/website/pages/downloads/index.jsx`:
+- `JavaScript heap out of memory`, `vault/website/Makefile`:
+
+    ```
+    --env NODE_OPTIONS=--max-old-space-size=4096
+    ```
+
+- `vault/website/pages/downloads/index.jsx`. Can be removed from version 1.5.0:
 
     ```
     getStaticProps
