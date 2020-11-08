@@ -52,9 +52,6 @@ task :clean do
 end
 
 task :build do
-  sh "sed -i '' 's|npm run static\$|bash -c \"npm install; npm run static\"|g' Makefile"
-  sh "sed -i '' 's|--rm|--rm --env NODE_OPTIONS=--max-old-space-size=4096|g' Makefile"
-  sh "sed -i '' 's|unstable_getStaticProps|getStaticProps|g' pages/downloads/index.jsx" # Can be removed from version 1.5.0
   sh "make build"
 end
 
