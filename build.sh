@@ -43,10 +43,17 @@ if [[ ${OSTYPE} == "linux-gnu"* ]]; then
   sed -i'' 's|npm run static$|bash -c \"npm install; npm run static\"|g' Makefile
   sed -i'' 's|--rm|--rm --env NODE_OPTIONS=--max-old-space-size=4096|g' Makefile
   sed -i'' 's|unstable_getStaticProps|getStaticProps|g' pages/downloads/index.jsx # Can be removed from version 1.5.0
+  sed -i'' 's| && cp _redirects out/.||g' package.json
 else
   sed -i '' 's|npm run static$|bash -c \"npm install; npm run static\"|g' Makefile
   sed -i '' 's|--rm|--rm --env NODE_OPTIONS=--max-old-space-size=4096|g' Makefile
   sed -i '' 's|unstable_getStaticProps|getStaticProps|g' pages/downloads/index.jsx # Can be removed from version 1.5.0
+  sed -i '' 's| && cp _redirects out/.||g' package.json
+fi
+
+# Can be removed since version 1.7.0?
+if [[ -e pages/api-docs/system/index.mdx && -e content/api-docs/system/internal-ui-feature.mdx ]]; then
+  cp content/api-docs/system/internal-ui-feature.mdx pages/api-docs/system/
 fi
 
 rake
