@@ -164,6 +164,15 @@ task :copy do
       doc.xpath("//div[contains(@class, 'g-search')]").each do |e|
         e.remove
       end
+      doc.xpath("//div[contains(@class, 'style_copyButtonContainer__')]").each do |e|
+        e.remove
+      end
+      doc.xpath("//div[contains(@class, 'hit-content-styles_root')]").each do |e|
+        e.remove
+      end
+      doc.xpath("//div[contains(@class, 'style_isShown__')]").each do |e|
+        e.remove
+      end
       doc.xpath("id('sidebar')").each do |e|
         e.remove
       end
